@@ -1,22 +1,46 @@
 #include <Arduino.h>
 
 // LED pins
-const int LED1_PIN = 15;
-const int LED2_PIN = 16;
+const int BLUE_LED_PIN = 15;
+const int RED_LED_PIN = 16;
+
+// External button pin
+const int BUTTON_PIN = 17;
 
 void setup() {
-  pinMode(LED1_PIN, OUTPUT);
-  pinMode(LED2_PIN, OUTPUT);
+  Serial.begin(115200);
+
+  pinMode(RED_LED_PIN, OUTPUT);
+  pinMode(BLUE_LED_PIN, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT);
+
+  Serial.println("Board started!");
 }
 
-void loop() {
-  // Both LEDs ON
-  digitalWrite(LED1_PIN, HIGH);
-  digitalWrite(LED2_PIN, HIGH);
-  delay(500);
+int lastButtonState = -1;
 
-  // Both LEDs OFF
-  digitalWrite(LED1_PIN, LOW);
-  digitalWrite(LED2_PIN, LOW);
-  delay(500);
+void loop() {
+  int buttonState = digitalRead(BUTTON_PIN);
+
+  if (buttonState == HIGH) {
+    // Pressed
+    digitalWrite(RED_LED_PIN, LOW);
+    digitalWrite(BLUE_LED_PIN, HIGH);
+  }
+  else
+  {
+    // Not Pressed
+    digitalWrite(RED_LED_PIN, HIGH);
+    digitalWrite(BLUE_LED_PIN, LOW);
+  }
+
+  // Log only when the state changes (one message per press/release)
+  if (buttonState != lastButtonState) {
+    if (buttonState == HIGH) {
+      Serial.println("Button pressed -> BLUE on");
+    } else {
+      Serial.println("Button not pressed -> RED on");
+    }
+    lastButtonState = buttonState;
+  }
 }
