@@ -4,60 +4,61 @@
 const int BLUE_LED_PIN = 15;
 const int RED_LED_PIN = 16;
 
-// External button pin
-const int BUTTON_PIN = 17;
+// External button: external pull-down + wired to 3.3V, so pressed = HIGH
+const int BUTTON_PIN = 17;       // external button -> FASTER blinking
+// BOOT button: on-board pull-up + button to GND, so pressed = LOW
+const int BOOT_BUTTON_PIN = 0;   // BOOT button     -> SLOWER blinking
 
-// BOOT button is hard-wired to GPIO0 on the board (pull-up + button to GND).
-// Reads HIGH when released, LOW when pressed.
-const int BOOT_BUTTON_PIN = 0;
+// Blink speeds (delay in milliseconds; smaller = faster)
+const int FAST_DELAY = 150;
+const int SLOW_DELAY = 800;
+
+// Current blink speed (start slow)
+int blinkDelay = SLOW_DELAY;
+
+// Read the buttons and switch mode if one is pressed.
+// A short delay() after detecting a press debounces the contact bounce.
+void checkButtons() {
+  // External button -> FAST mode (pressed = HIGH, external pull-down)
+  if (digitalRead(BUTTON_PIN) == HIGH) {
+    delay(50);  // debounce
+    if (digitalRead(BUTTON_PIN) == HIGH && blinkDelay != FAST_DELAY) {
+      blinkDelay = FAST_DELAY;
+      Serial.println("External button -> FAST mode");
+    }
+  }
+
+  // BOOT button -> SLOW mode
+  if (digitalRead(BOOT_BUTTON_PIN) == LOW) {
+    delay(50);  // debounce
+    if (digitalRead(BOOT_BUTTON_PIN) == LOW && blinkDelay != SLOW_DELAY) {
+      blinkDelay = SLOW_DELAY;
+      Serial.println("BOOT button -> SLOW mode");
+    }
+  }
+}
 
 void setup() {
   Serial.begin(115200);
 
   pinMode(RED_LED_PIN, OUTPUT);
   pinMode(BLUE_LED_PIN, OUTPUT);
-  pinMode(BUTTON_PIN, INPUT);
-  pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP);
+  pinMode(BUTTON_PIN, INPUT);            // external pull-down on the board
+  pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP); // on-board pull-up
 
-  Serial.println("Board started!");
+  Serial.println("Board started! Mode: SLOW");
 }
 
-int lastButtonState = -1;
-int lastBootState = -1;
-
 void loop() {
-  int buttonState = digitalRead(BUTTON_PIN);
+  // Both LEDs ON
+  digitalWrite(RED_LED_PIN, HIGH);
+  digitalWrite(BLUE_LED_PIN, HIGH);
+  checkButtons();
+  delay(blinkDelay);
 
-  if (buttonState == HIGH) {
-    // Pressed
-    digitalWrite(RED_LED_PIN, LOW);
-    digitalWrite(BLUE_LED_PIN, HIGH);
-  }
-  else
-  {
-    // Not Pressed
-    digitalWrite(RED_LED_PIN, HIGH);
-    digitalWrite(BLUE_LED_PIN, LOW);
-  }
-
-  // Log only when the state changes (one message per press/release)
-  if (buttonState != lastButtonState) {
-    if (buttonState == HIGH) {
-      Serial.println("Button pressed -> BLUE on");
-    } else {
-      Serial.println("Button not pressed -> RED on");
-    }
-    lastButtonState = buttonState;
-  }
-
-  // BOOT button (GPIO0): LOW = pressed, HIGH = released
-  int bootState = digitalRead(BOOT_BUTTON_PIN);
-  if (bootState != lastBootState) {
-    if (bootState == LOW) {
-      Serial.println("BOOT button pressed");
-    } else {
-      Serial.println("BOOT button released");
-    }
-    lastBootState = bootState;
-  }
+  // Both LEDs OFF
+  digitalWrite(RED_LED_PIN, LOW);
+  digitalWrite(BLUE_LED_PIN, LOW);
+  checkButtons();
+  delay(blinkDelay);
 }
