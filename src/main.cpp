@@ -9,56 +9,49 @@ const int BUTTON_PIN = 17;       // external button -> FASTER blinking
 // BOOT button: on-board pull-up + button to GND, so pressed = LOW
 const int BOOT_BUTTON_PIN = 0;   // BOOT button     -> SLOWER blinking
 
-// Blink speeds (delay in milliseconds; smaller = faster)
-const int FAST_DELAY = 150;
-const int SLOW_DELAY = 800;
+// Blink intervals (ms; smaller = faster)
+const unsigned long FAST_INTERVAL = 150;
+const unsigned long SLOW_INTERVAL = 800;
 
-// Current blink speed (start slow)
-int blinkDelay = SLOW_DELAY;
+// Current blink interval (start slow)
+unsigned long blinkInterval = SLOW_INTERVAL;
 
-// Read the buttons and switch mode if one is pressed.
-// A short delay() after detecting a press debounces the contact bounce.
-void checkButtons() {
-  // External button -> FAST mode (pressed = HIGH, external pull-down)
-  if (digitalRead(BUTTON_PIN) == HIGH) {
-    delay(50);  // debounce
-    if (digitalRead(BUTTON_PIN) == HIGH && blinkDelay != FAST_DELAY) {
-      blinkDelay = FAST_DELAY;
-      Serial.println("External button -> FAST mode");
-    }
-  }
-
-  // BOOT button -> SLOW mode
-  if (digitalRead(BOOT_BUTTON_PIN) == LOW) {
-    delay(50);  // debounce
-    if (digitalRead(BOOT_BUTTON_PIN) == LOW && blinkDelay != SLOW_DELAY) {
-      blinkDelay = SLOW_DELAY;
-      Serial.println("BOOT button -> SLOW mode");
-    }
-  }
-}
+// Non-blocking blink state
+unsigned long previousMillis = 0;  // last time the LEDs toggled
+bool ledsOn = false;               // current LED state
 
 void setup() {
   Serial.begin(115200);
 
   pinMode(RED_LED_PIN, OUTPUT);
   pinMode(BLUE_LED_PIN, OUTPUT);
-  pinMode(BUTTON_PIN, INPUT);            // external pull-down on the board
+  pinMode(BUTTON_PIN, INPUT);             // external pull-down on the board
   pinMode(BOOT_BUTTON_PIN, INPUT_PULLUP); // on-board pull-up
 
   Serial.println("Board started! Mode: SLOW");
 }
 
 void loop() {
-  // Both LEDs ON
-  digitalWrite(RED_LED_PIN, HIGH);
-  digitalWrite(BLUE_LED_PIN, HIGH);
-  checkButtons();
-  delay(blinkDelay);
+  // 1) Check buttons on EVERY loop (non-blocking, instant response)
+  if (digitalRead(BUTTON_PIN) == HIGH) {          // external button pressed
+    if (blinkInterval != FAST_INTERVAL) {
+      blinkInterval = FAST_INTERVAL;
+      Serial.println("External button -> FAST mode");
+    }
+  }
+  if (digitalRead(BOOT_BUTTON_PIN) == LOW) {      // BOOT button pressed
+    if (blinkInterval != SLOW_INTERVAL) {
+      blinkInterval = SLOW_INTERVAL;
+      Serial.println("BOOT button -> SLOW mode");
+    }
+  }
 
-  // Both LEDs OFF
-  digitalWrite(RED_LED_PIN, LOW);
-  digitalWrite(BLUE_LED_PIN, LOW);
-  checkButtons();
-  delay(blinkDelay);
+  // 2) Toggle the LEDs only once enough time has passed
+  unsigned long currentMillis = millis();
+  if (currentMillis - previousMillis >= blinkInterval) {
+    previousMillis = currentMillis;
+    ledsOn = !ledsOn;
+    digitalWrite(RED_LED_PIN, ledsOn);
+    digitalWrite(BLUE_LED_PIN, ledsOn);
+  }
 }
